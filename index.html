@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Imagin∞ Lab</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <!-- p5.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/p5@1.9.0/lib/p5.min.js"></script>
+
+  <style>
+    :root {
+      --bg-color: #030712;
+      --accent: #38bdf8;
+      --accent-soft: rgba(56, 189, 248, 0.2);
+      --text-main: #e5e7eb;
+      --text-muted: #9ca3af;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: radial-gradient(circle at top, #020617 0%, #020617 30%, #020617 100%);
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text",
+        "Helvetica Neue", Arial, sans-serif;
+      color: var(--text-main);
+    }
+
+    /* p5 canvas will sit behind everything */
+    canvas {
+      position: fixed !important;
+      top: 0;
+      left: 0;
+      z-index: -1;
+    }
+
+    .overlay {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      padding: 3rem clamp(2rem, 5vw, 4rem);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: flex-start;
+      pointer-events: none; /* allows mouse to go to canvas */
+    }
+
+    .content-card {
+      max-width: 780px;
+      background: radial-gradient(circle at top left,
+        rgba(56, 189, 248, 0.16),
+        rgba(15, 23, 42, 0.95) 40%,
+        rgba(15, 23, 42, 0.98) 100%);
+      border: 1px solid rgba(148, 163, 184, 0.25);
+      box-shadow:
+        0 0 40px rgba(56, 189, 248, 0.4),
+        0 0 120px rgba(8, 47, 73, 0.8);
+      border-radius: 1.5rem;
+      padding: clamp(1.8rem, 4vw, 2.4rem);
+      backdrop-filter: blur(16px);
+      pointer-events: auto; /* text & button can be clicked */
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.35rem 0.75rem;
+      border-radius: 999px;
+      background: rgba(15, 23, 42, 0.9);
+      border: 1px solid rgba(148, 163, 184, 0.6);
+      font-size: 0.75rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 1rem;
+    }
+
+    .pill-dot {
+      width: 0.5rem;
+      height: 0.5rem;
+      border-radius: 999px;
+      background: var(--accent);
+      box-shadow: 0 0 14px rgba(56, 189, 248, 0.9);
+    }
+
+    h1 {
+      font-size: clamp(2.4rem, 5vw, 3.4rem);
+      line-height: 1.05;
+      letter-spacing: 0.04em;
+      margin-bottom: 0.75rem;
+    }
+
+    h1 span.accent {
+      background: linear-gradient(120deg, #38bdf8, #a855f7, #f97316);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+
+    .tagline {
+      font-size: 0.95rem;
+      text-transform: uppercase;
+      letter-spacing: 0.3em;
+      color: var(--text-muted);
+      margin-bottom: 1.4rem;
+    }
+
+    p {
+      font-size: 0.98rem;
+      line-height: 1.6;
+      color: var(--text-muted);
+      margin-bottom: 0.75rem;
+    }
+
+    .cta-row {
+      margin-top: 1.6rem;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .btn-primary {
+      padding: 0.7rem 1.4rem;
+      border-radius: 999px;
+      border: 1px solid rgba(56, 189, 248, 0.6);
+      background: radial-gradient(circle at top,
+        rgba(56, 189, 248, 0.3),
+        rgba(15, 23, 42, 1));
+      color: #e0f2fe;
+      font-size: 0.9rem;
+      font-weight: 500;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      cursor: pointer;
+      transition: transform 0.18s ease-out, box-shadow 0.18s ease-out,
+        background 0.18s ease-out;
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-1px);
+      box-shadow:
+        0 0 26px rgba(56, 189, 248, 0.7),
+        0 0 60px rgba(15, 23, 42, 0.9);
+      background: radial-gradient(circle at top,
+        rgba(56, 189, 248, 0.45),
+        rgba(15, 23, 42, 1));
+    }
+
+    .btn-primary span.arrow {
+      font-size: 1.1rem;
+    }
+
+    .helper-text {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      max-width: 260px;
+    }
+
+    .corner-label {
+      position: fixed;
+      right: 1.5rem;
+      bottom: 1.2rem;
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.18em;
+      color: rgba(148, 163, 184, 0.8);
+      background: rgba(15, 23, 42, 0.7);
+      border-radius: 999px;
+      border: 1px solid rgba(51, 65, 85, 0.8);
+      padding: 0.35rem 0.9rem;
+      backdrop-filter: blur(16px);
+      pointer-events: none;
+    }
+
+    @media (max-width: 720px) {
+      .overlay {
+        padding: 1.5rem;
+        align-items: stretch;
+      }
+
+      .content-card {
+        padding: 1.5rem;
+      }
+
+      .corner-label {
+        display: none;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="overlay">
+    <div class="content-card">
+      <div class="pill">
+        <span class="pill-dot"></span>
+        <span>Imagin∞ Lab · Launching 2026</span>
+      </div>
+
+      <h1><span class="accent">Imagin∞ Lab</span></h1>
+      <div class="tagline">Frontier research for the next era of intelligence</div>
+
+      <p>
+        I will launch Imagin∞ Lab in 2026 — a frontier research lab for the next era of intelligence.
+      </p>
+      <p>
+        We pioneer brain-inspired, human-centered, and immersive AI that understand how minds work,
+        assist everyday life, augment human capabilities, and empower individuals and societies to evolve.
+      </p>
+
+      <div class="cta-row">
+        <a class="btn-primary" href="#" target="_blank" rel="noopener noreferrer">
+          <span>Get in touch</span>
+          <span class="arrow">↗</span>
+        </a>
+        <div class="helper-text">
+          Move your cursor to disturb the field.  
+          This is where imagination bends reality.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="corner-label">Interactive field · Move your mouse</div>
+
+  <script>
+    // --- Sci-fi particle field with mouse interaction ---
+
+    let particles = [];
+    const NUM_PARTICLES = 220;
+    let mouseVec;
+    let lastMoveTime = 0;
+
+    class Particle {
+      constructor() {
+        this.reset(true);
+      }
+
+      reset(initial = false) {
+        this.pos = createVector(random(width), random(height));
+        const angle = random(TWO_PI);
+        const speed = random(0.1, 0.6);
+        this.vel = p5.Vector.fromAngle(angle).mult(speed);
+        this.baseVel = this.vel.copy();
+        this.size = random(1.4, 3);
+        this.noiseOffset = random(1000);
+        this.parallax = random(0.4, 1.2);
+        this.alpha = random(120, 220);
+        this.hue = random(180, 220); // bluish
+      }
+
+      update() {
+        // Soft noise motion
+        const n = noise(this.pos.x * 0.0008, this.pos.y * 0.0008, this.noiseOffset);
+        const angle = n * TWO_PI * 2.0;
+        const noiseVec = p5.Vector.fromAngle(angle).mult(0.05);
+        this.vel = p5.Vector.add(this.baseVel, noiseVec);
+
+        // Mouse interaction
+        const now = millis();
+        const movingRecently = now - lastMoveTime < 1800;
+
+        if (movingRecently && mouseVec) {
+          const dir = p5.Vector.sub(this.pos, mouseVec);
+          const d = dir.mag();
+          const influenceRadius = 220;
+          if (d < influenceRadius && d > 0.1) {
+            const strength = map(d, 0, influenceRadius, 1.6, 0.0);
+            dir.normalize();
+            // Attract slightly, but also swirl around
+            const tangent = createVector(-dir.y, dir.x);
+            const force = p5.Vector.mult(dir, -0.12 * strength).add(tangent.mult(0.24 * strength));
+            this.vel.add(force);
+          }
+        }
+
+        this.vel.limit(2.0 * this.parallax);
+        this.pos.add(this.vel);
+
+        // Wrap around edges
+        if (this.pos.x < -50) this.pos.x = width + 50;
+        if (this.pos.x > width + 50) this.pos.x = -50;
+        if (this.pos.y < -50) this.pos.y = height + 50;
+        if (this.pos.y > height + 50) this.pos.y = -50;
+      }
+
+      draw() {
+        noStroke();
+        const baseAlpha = this.alpha;
+        const now = millis();
+        const movingRecently = now - lastMoveTime < 1800;
+        let a = baseAlpha;
+        if (movingRecently && mouseVec) {
+          const d = p5.Vector.dist(this.pos, mouseVec);
+          if (d < 260) {
+            a = map(d, 0, 260, 255, baseAlpha);
+          }
+        }
+        fill(this.hue, 80, 90, a);
+        ellipse(this.pos.x, this.pos.y, this.size * 1.3, this.size * 1.3);
+      }
+    }
+
+    function setup() {
+      const cnv = createCanvas(windowWidth, windowHeight);
+      cnv.style('z-index', '-1');
+      colorMode(HSB, 360, 100, 100, 255);
+      noStroke();
+      mouseVec = createVector(width / 2, height / 2);
+
+      for (let i = 0; i < NUM_PARTICLES; i++) {
+        particles.push(new Particle());
+      }
+    }
+
+    function draw() {
+      // subtle space-like background
+      background(220, 40, 4); // very dark blue-ish in HSB
+
+      // faint radial glow in center-ish
+      const gradientRadius = max(width, height) * 0.7;
+      for (let r = gradientRadius; r > 0; r -= 60) {
+        const alpha = map(r, 0, gradientRadius, 42, 0);
+        fill(200, 60, 35, alpha);
+        ellipse(width * 0.52, height * 0.4, r, r * 0.8);
+      }
+
+      // particle layer
+      blendMode(ADD);
+      for (let p of particles) {
+        p.update();
+        p.draw();
+      }
+      blendMode(BLEND);
+    }
+
+    function mouseMoved() {
+      mouseVec.set(mouseX, mouseY);
+      lastMoveTime = millis();
+    }
+
+    function touchMoved() {
+      mouseVec.set(mouseX, mouseY);
+      lastMoveTime = millis();
+      return false;
+    }
+
+    function windowResized() {
+      resizeCanvas(windowWidth, windowHeight);
+    }
+  </script>
+</body>
+</html>
