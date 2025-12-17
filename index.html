@@ -1,286 +1,44 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <title>Imagin∞ Lab - Neuro Core</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-
-  <script type="importmap">
-    {
-      "imports": {
-        "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
-        "three/examples/jsm/": "https://unpkg.com/three@0.160.0/examples/jsm/"
-      }
-    }
-  </script>
-
-  <style>
-    :root {
-      /* 修改背景色为纯黑 */
-      --bg-color: #000000;
-      --accent: #38bdf8;
-      --text-main: #e5e7eb;
-      --text-muted: #9ca3af;
-    }
-
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
-
-    html, body {
-      width: 100%;
-      height: 100%;
-      overflow: hidden;
-      /* 纯黑背景 */
-      background-color: var(--bg-color);
-      font-family: 'Manrope', system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
-      color: var(--text-main);
-    }
-
-    /* Three.js 容器 */
-    #vis-container {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100vw;
-        height: 100vh;
-        background-color: var(--bg-color); 
-        z-index: -1; /* 放在最底层 */
-        pointer-events: none; 
-    }
-
-    /* --- 以下为原有 UI 样式，针对黑色背景微调 --- */
-    .overlay {
-      position: relative;
-      width: 100%;
-      height: 100%;
-      padding: 3rem clamp(2rem, 5vw, 4rem);
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      align-items: flex-start;
-      pointer-events: none;
-    }
-
-    .content-card {
-      max-width: 780px;
-      /* 微调卡片背景，使其在纯黑上更通透 */
-      background: linear-gradient(to bottom right,
-        rgba(15, 23, 42, 0.6),
-        rgba(0, 0, 0, 0.8));
-      border: 1px solid rgba(148, 163, 184, 0.15);
-      box-shadow:
-        0 0 40px rgba(56, 189, 248, 0.1),
-        0 0 120px rgba(0, 0, 0, 0.5);
-      border-radius: 1.5rem;
-      padding: clamp(1.8rem, 4vw, 2.4rem);
-      backdrop-filter: blur(20px); /* 增加模糊度 */
-      pointer-events: auto;
-    }
-
-    .pill {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.5rem;
-      padding: 0.35rem 0.75rem;
-      border-radius: 999px;
-      background: rgba(0, 0, 0, 0.6);
-      border: 1px solid rgba(148, 163, 184, 0.3);
-      font-size: 0.75rem;
-      font-weight: 600;
-      letter-spacing: 0.12em;
-      text-transform: uppercase;
-      color: var(--text-muted);
-      margin-bottom: 1rem;
-    }
-
-    .pill-dot {
-      width: 0.5rem;
-      height: 0.5rem;
-      border-radius: 999px;
-      background: var(--accent);
-      box-shadow: 0 0 14px rgba(56, 189, 248, 0.9);
-    }
-
-    h1 {
-      font-size: clamp(2.4rem, 5vw, 3.4rem);
-      font-weight: 800;
-      line-height: 1.05;
-      letter-spacing: -0.02em;
-      margin-bottom: 0.75rem;
-    }
-
-    h1 span.accent {
-      background: linear-gradient(120deg, #38bdf8, #a855f7, #38bdf8);
-      -webkit-background-clip: text;
-      background-clip: text;
-      color: transparent;
-    }
-
-    .tagline {
-      font-size: 0.95rem;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.2em;
-      color: var(--text-muted);
-      margin-bottom: 1.4rem;
-    }
-
-    p {
-      font-size: 1rem;
-      line-height: 1.6;
-      color: var(--text-muted);
-      margin-bottom: 0.75rem;
-      max-width: 600px;
-    }
-
-    .cta-row {
-      margin-top: 1.6rem;
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      gap: 1.5rem;
-    }
-
-    .btn-primary {
-      padding: 0.8rem 1.6rem;
-      border-radius: 999px;
-      border: 1px solid rgba(56, 189, 248, 0.4);
-      background: radial-gradient(circle at top,
-        rgba(56, 189, 248, 0.2),
-        rgba(0, 0, 0, 1));
-      color: #e0f2fe;
-      font-size: 0.95rem;
-      font-weight: 700;
-      text-decoration: none;
-      display: inline-flex;
-      align-items: center;
-      gap: 0.5rem;
-      cursor: pointer;
-      transition: all 0.2s ease-out;
-    }
-
-    .btn-primary:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 0 30px rgba(56, 189, 248, 0.4);
-      border-color: rgba(56, 189, 248, 0.8);
-    }
-
-    .btn-primary span.arrow {
-      font-size: 1.2rem;
-    }
-
-    .helper-text {
-      font-size: 0.85rem;
-      font-weight: 500;
-      color: var(--text-muted);
-      opacity: 0.7;
-    }
-
-    .corner-label {
-      position: fixed;
-      right: 1.5rem;
-      bottom: 1.2rem;
-      font-size: 0.7rem;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.15em;
-      color: rgba(148, 163, 184, 0.6);
-      pointer-events: none;
-    }
-
-    @media (max-width: 720px) {
-      .overlay {
-        padding: 1.5rem;
-        align-items: stretch;
-      }
-      .content-card {
-        padding: 1.5rem;
-      }
-      .corner-label {
-        display: none;
-      }
-    }
-  </style>
-</head>
-
-<body>
-  <div id="vis-container"></div>
-
-  <div class="overlay">
-    <div class="content-card">
-      <div class="pill">
-        <span class="pill-dot"></span>
-        <span>Imagin∞ Lab · Launching 2026</span>
-      </div>
-
-      <h1><span class="accent">Imagin∞ Lab</span></h1>
-      <div class="tagline">Frontier research for the next era of intelligence</div>
-
-      <p>
-        I will launch Imagin∞ Lab in 2026 — a frontier research lab decoding the principles of biological intelligence to build the next generation of AI.
-      </p>
-      <p>
-        We pioneer neuro-inspired architectures and immersive interfaces that augment human capability and expand the boundaries of imagination.
-      </p>
-
-      <div class="cta-row">
-        <a class="btn-primary" href="#" target="_blank" rel="noopener noreferrer">
-          <span>Get in touch</span>
-          <span class="arrow">↗</span>
-        </a>
-        <div class="helper-text">
-          Neuro-synthesis engine online. <br>Designing the future mind.
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <div class="corner-label">Neural Core V1.2 · Stable</div>
-
-  <script type="module">
+<script type="module">
         import * as THREE from 'three';
         import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
         import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 
+        console.log("🚀 Three.js starting...");
+
         // --- Configuration ---
-        const MODEL_PATH = './public/whole_brain_optimized.glb'; // 确保此文件存在
-        const SAMPLING_RATE = 8; // 采样率，越小点越多
-        const ROTATION_SPEED = 0.0005; // 恒定自转速度
+        // TRY THIS PATH FIRST. If it fails, try '/whole_brain_source.glb' (with leading slash)
+        const MODEL_PATH = './whole_brain_optimized.glb'; 
+        const SAMPLING_RATE = 8;
 
         // --- Scene Setup ---
         const container = document.getElementById('vis-container');
+        if (!container) console.error("❌ container not found!");
+
         const scene = new THREE.Scene();
-        // 背景雾化，使用纯黑色
         scene.fog = new THREE.FogExp2(0x000000, 0.03); 
         const clock = new THREE.Clock();
 
         const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-        // 初始相机位置
-        camera.position.set(0, 0, 20);
+        camera.position.set(0, 0, 20); // Move camera back to ensure we see 0,0,0
 
         const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
-        renderer.setClearColor(0x000000, 1); // 纯黑背景
+        renderer.setClearColor(0x000000, 1);
         renderer.setSize(window.innerWidth, window.innerHeight);
         renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); 
         container.appendChild(renderer.domElement);
 
-        // --- Controls (Passive Interaction) ---
+        // --- Debug Helpers ---
+        // 1. Add Axes Helper (Red=X, Green=Y, Blue=Z)
+        const axesHelper = new THREE.AxesHelper( 5 );
+        scene.add( axesHelper );
+        console.log("✅ Scene & Renderer initialized");
+
+        // --- Controls ---
         const controls = new OrbitControls(camera, renderer.domElement);
-        controls.enableDamping = true; 
-        controls.dampingFactor = 0.05;
-        controls.enableZoom = false;   
-        controls.enableRotate = true; // 允许用户轻微旋转观看
-        controls.autoRotate = false;
+        controls.enableDamping = true;
         controls.target.set(0, 0, 0);
 
-        // --- Texture (圆形光点贴图) ---
+        // --- Texture ---
         function createCircleTexture() {
             const size = 64;
             const canvas = document.createElement('canvas');
@@ -296,159 +54,117 @@
         }
         const circleSprite = createCircleTexture();
 
-        // --- Shader Uniforms (用于传递时间给着色器实现微光) ---
-        const uniforms = {
-            uTime: { value: 0 }
-        };
+        // --- Shader Uniforms ---
+        const uniforms = { uTime: { value: 0 } };
 
         // --- Model Loading ---
         const loader = new GLTFLoader();
         let brainParticles = null;
 
-        loader.load(MODEL_PATH, (gltf) => {
-            const originalScene = gltf.scene;
-            const particlesGeometry = new THREE.Group();
+        console.log(`📂 Attempting to load model from: ${MODEL_PATH}`);
 
-            originalScene.traverse((child) => {
-                if (child.isMesh) {
-                    const originalGeo = child.geometry;
-                    const originalPositions = originalGeo.attributes.position.array;
-                    const totalCount = originalPositions.length / 3;
-                    
-                    const positionsList = [];
-                    const colorsList = [];
-                    const phasesList = []; // 用于微光相位的随机值
-                    
-                    const colorObj = new THREE.Color();
+        loader.load(MODEL_PATH, 
+            // Success
+            (gltf) => {
+                console.log("🎉 Model Loaded Successfully!", gltf);
+                const originalScene = gltf.scene;
+                const particlesGeometry = new THREE.Group();
+                let pointCount = 0;
 
-                    for (let i = 0; i < totalCount; i += SAMPLING_RATE) {
-                        const x = originalPositions[i * 3];
-                        const y = originalPositions[i * 3 + 1];
-                        const z = originalPositions[i * 3 + 2];
+                originalScene.traverse((child) => {
+                    if (child.isMesh) {
+                        const originalGeo = child.geometry;
+                        const originalPositions = originalGeo.attributes.position.array;
+                        const totalCount = originalPositions.length / 3;
+                        
+                        const positionsList = [];
+                        const colorsList = [];
+                        const phasesList = []; 
+                        const colorObj = new THREE.Color();
 
-                        positionsList.push(x, y, z);
-                        // 随机相位，让每个点的闪烁不同步
-                        phasesList.push(Math.random() * Math.PI * 2);
+                        for (let i = 0; i < totalCount; i += SAMPLING_RATE) {
+                            const x = originalPositions[i * 3];
+                            const y = originalPositions[i * 3 + 1];
+                            const z = originalPositions[i * 3 + 2];
 
-                        // 颜色设置：深蓝/青色调，在黑色背景下发光
-                        // Hue: 0.6 (蓝色), Saturation: 0.8, Lightness: 0.3 (较暗，靠发光提亮)
-                        colorObj.setHSL(0.6, 0.8, 0.3); 
-                        colorsList.push(colorObj.r, colorObj.g, colorObj.b);
+                            positionsList.push(x, y, z);
+                            phasesList.push(Math.random() * Math.PI * 2);
+                            colorObj.setHSL(0.6, 0.8, 0.3); 
+                            colorsList.push(colorObj.r, colorObj.g, colorObj.b);
+                            pointCount++;
+                        }
+
+                        const sparseGeometry = new THREE.BufferGeometry();
+                        sparseGeometry.setAttribute('position', new THREE.Float32BufferAttribute(positionsList, 3));
+                        sparseGeometry.setAttribute('color', new THREE.Float32BufferAttribute(colorsList, 3));
+                        sparseGeometry.setAttribute('phase', new THREE.Float32BufferAttribute(phasesList, 1));
+
+                        const material = new THREE.PointsMaterial({
+                            size: 0.12, 
+                            map: circleSprite, 
+                            vertexColors: true,
+                            transparent: true,
+                            opacity: 1.0, 
+                            depthWrite: false, 
+                            blending: THREE.AdditiveBlending, 
+                        });
+
+                        material.onBeforeCompile = (shader) => {
+                            shader.uniforms.uTime = uniforms.uTime;
+                            shader.vertexShader = shader.vertexShader.replace('#include <common>',`#include <common> \n attribute float phase; varying float vPhase;`);
+                            shader.vertexShader = shader.vertexShader.replace('#include <begin_vertex>',`#include <begin_vertex> \n vPhase = phase; float dist = length(mvPosition.xyz); float sizeBoost = smoothstep(20.0, 0.0, dist) * 1.5 + 1.0; gl_PointSize *= sizeBoost;`);
+                            shader.fragmentShader = shader.fragmentShader.replace('#include <common>',`#include <common> \n uniform float uTime; varying float vPhase;`);
+                            shader.fragmentShader = shader.fragmentShader.replace('#include <map_particle_fragment>',`#include <map_particle_fragment> \n float glimmer = sin(uTime * 1.5 + vPhase) * 0.5 + 0.5; glimmer = mix(0.2, 1.0, glimmer); diffuseColor.a *= glimmer;`);
+                        };
+
+                        const points = new THREE.Points(sparseGeometry, material);
+                        points.scale.set(1.2, 1.2, 1.2); 
+                        points.position.set(0, -1, 0); 
+                        particlesGeometry.add(points);
                     }
+                });
 
-                    const sparseGeometry = new THREE.BufferGeometry();
-                    sparseGeometry.setAttribute('position', new THREE.Float32BufferAttribute(positionsList, 3));
-                    sparseGeometry.setAttribute('color', new THREE.Float32BufferAttribute(colorsList, 3));
-                    // 传递相位属性给 shader
-                    sparseGeometry.setAttribute('phase', new THREE.Float32BufferAttribute(phasesList, 1));
+                console.log(`✨ Particles generated: ${pointCount}`);
+                if (pointCount === 0) console.warn("⚠️ Model loaded but found no mesh data to generate particles.");
 
-                    // --- 核心材质：带有自定义 Shader 的点材质 ---
-                    const material = new THREE.PointsMaterial({
-                        size: 0.12, // 点稍微大一点
-                        map: circleSprite, 
-                        vertexColors: true,
-                        transparent: true,
-                        opacity: 1.0, // 基础不透明度
-                        depthWrite: false, // 关闭深度写入，这对于透明发光粒子很重要
-                        // 使用相加混合模式，在黑色背景上实现发光效果
-                        blending: THREE.AdditiveBlending, 
-                    });
-
-                    // 修改 Shader 以实现微光 (Glimmer) 和距离大小衰减
-                    material.onBeforeCompile = (shader) => {
-                        // 注入 uniforms
-                        shader.uniforms.uTime = uniforms.uTime;
-
-                        // 1. 修改顶点着色器 (Vertex Shader)
-                        shader.vertexShader = shader.vertexShader.replace(
-                            '#include <common>',
-                            `
-                            #include <common>
-                            attribute float phase; // 接收相位属性
-                            varying float vPhase;  // 传递给片元着色器
-                            `
-                        );
-                        shader.vertexShader = shader.vertexShader.replace(
-                            '#include <begin_vertex>',
-                            `
-                            #include <begin_vertex>
-                            vPhase = phase; 
-                            
-                            // 简单的距离大小衰减 (近大远小增强)
-                            float dist = length(mvPosition.xyz);
-                            float sizeBoost = smoothstep(20.0, 0.0, dist) * 1.5 + 1.0;
-                            gl_PointSize *= sizeBoost;
-                            `
-                        );
-
-                        // 2. 修改片元着色器 (Fragment Shader) - 实现微光
-                        shader.fragmentShader = shader.fragmentShader.replace(
-                            '#include <common>',
-                            `
-                            #include <common>
-                            uniform float uTime; // 接收时间
-                            varying float vPhase; // 接收相位
-                            `
-                        );
-                        shader.fragmentShader = shader.fragmentShader.replace(
-                            '#include <map_particle_fragment>',
-                            `
-                            #include <map_particle_fragment>
-                            
-                            // --- 微光计算核心 ---
-                            // 使用 sin 函数结合时间和相位创造波动
-                            // uTime * 1.5 控制闪烁速度
-                            float glimmer = sin(uTime * 1.5 + vPhase) * 0.5 + 0.5;
-                            
-                            // 将波动范围映射到 [0.2, 1.0]，保证点不会完全消失
-                            glimmer = mix(0.2, 1.0, glimmer);
-
-                            // 将微光值应用到片元的 Alpha (透明度) 通道
-                            diffuseColor.a *= glimmer;
-                            `
-                        );
-                    };
-
-                    const points = new THREE.Points(sparseGeometry, material);
-                    // 调整模型初始位置和缩放
-                    points.scale.set(1.2, 1.2, 1.2); 
-                    points.position.set(0, -1, 0); 
-                    
-                    particlesGeometry.add(points);
-                }
-            });
-
-            brainParticles = particlesGeometry;
-            scene.add(brainParticles);
-        }, undefined, (error) => { console.error(error); });
+                brainParticles = particlesGeometry;
+                scene.add(brainParticles);
+            }, 
+            // Progress
+            (xhr) => {
+                console.log(`⏳ Loading: ${(xhr.loaded / xhr.total * 100)}% loaded`);
+            },
+            // Error
+            (error) => {
+                console.error('❌ An error happened loading the model:', error);
+                
+                // Fallback: Add a red box if model fails so we know scene is working
+                const geometry = new THREE.BoxGeometry( 5, 5, 5 );
+                const material = new THREE.MeshBasicMaterial( {color: 0xff0000, wireframe: true} );
+                const cube = new THREE.Mesh( geometry, material );
+                scene.add( cube );
+                console.log("📦 Added Fallback Red Cube");
+            }
+        );
 
         // --- Animate ---
         function animate() {
             requestAnimationFrame(animate);
-            
             const time = clock.getElapsedTime();
-            // 更新 Shader 的时间 uniform
             uniforms.uTime.value = time;
-
             controls.update(); 
 
             if (brainParticles) {
-                // 缓慢恒定自转
-                brainParticles.rotation.y += ROTATION_SPEED;
+                brainParticles.rotation.y += 0.0005;
             }
 
             renderer.render(scene, camera);
         }
-        
         animate();
 
-        // --- Resize Handler ---
         window.addEventListener('resize', () => {
             renderer.setSize(window.innerWidth, window.innerHeight);
             camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
         });
-
-    </script>
-</body>
-</html>
+  </script>
