@@ -45,9 +45,10 @@
         width: 100vw;
         height: 100vh;
         z-index: -1;
+        pointer-events: none;
     }
 
-    /* --- Original UI Styles --- */
+    /* UI Styles */
     .overlay {
       position: relative;
       width: 100%;
@@ -57,12 +58,11 @@
       flex-direction: column;
       justify-content: center;
       align-items: flex-start;
-      pointer-events: none; /* Let mouse pass through to canvas */
+      pointer-events: none; 
     }
 
     .content-card {
       max-width: 780px;
-      /* Darker, glass-morphism card for dark mode */
       background: linear-gradient(to bottom right, rgba(15, 23, 42, 0.6), rgba(0, 0, 0, 0.8));
       border: 1px solid rgba(148, 163, 184, 0.15);
       box-shadow: 0 0 40px rgba(56, 189, 248, 0.1), 0 0 120px rgba(0, 0, 0, 0.5);
@@ -225,8 +225,10 @@
         import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
         import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 
+        // --- Configuration ---
         const MODEL_PATH = './whole_brain_source.glb'; 
         const SAMPLING_RATE = 8;
+        console.log("🚀 Starting Production Mode...");
 
         // Setup
         const container = document.getElementById('vis-container');
@@ -267,73 +269,111 @@
         const circleSprite = createCircleTexture();
         const uniforms = { uTime: { value: 0 } };
 
-        // Load Model
+        // Loader
         const loader = new GLTFLoader();
         let brainParticles = null;
 
-        loader.load(MODEL_PATH, (gltf) => {
-            const originalScene = gltf.scene;
-            const particlesGeometry = new THREE.Group();
+        loader.load(MODEL_PATH, 
+            (gltf) => {
+                console.log("✅ Model Loaded");
+                const originalScene = gltf.scene;
+                const particlesGeometry = new THREE.Group();
 
-            originalScene.traverse((child) => {
-                if (child.isMesh) {
-                    const originalGeo = child.geometry;
-                    const originalPositions = originalGeo.attributes.position.array;
-                    const totalCount = originalPositions.length / 3;
-                    const positionsList = [];
-                    const colorsList = [];
-                    const phasesList = []; 
-                    const colorObj = new THREE.Color();
+                originalScene.traverse((child) => {
+                    if (child.isMesh) {
+                        const originalGeo = child.geometry;
+                        const originalPositions = originalGeo.attributes.position.array;
+                        const totalCount = originalPositions.length / 3;
+                        const positionsList = [];
+                        const colorsList = [];
+                        const phasesList = []; 
+                        const colorObj = new THREE.Color();
 
-                    for (let i = 0; i < totalCount; i += SAMPLING_RATE) {
-                        const x = originalPositions[i * 3];
-                        const y = originalPositions[i * 3 + 1];
-                        const z = originalPositions[i * 3 + 2];
-                        positionsList.push(x, y, z);
-                        phasesList.push(Math.random() * Math.PI * 2);
-                        colorObj.setHSL(0.6, 0.8, 0.3); // Dark Blue/Cyan
-                        colorsList.push(colorObj.r, colorObj.g, colorObj.b);
+                        for (let i = 0; i < totalCount; i += SAMPLING_RATE) {
+                            const x = originalPositions[i * 3];
+                            const y = originalPositions[i * 3 + 1];
+                            const z = originalPositions[i * 3 + 2];
+                            positionsList.push(x, y, z);
+                            phasesList.push(Math.random() * Math.PI * 2);
+                            colorObj.setHSL(0.6, 0.8, 0.3); // Dark Blue/Cyan
+                            colorsList.push(colorObj.r, colorObj.g, colorObj.b);
+                        }
+
+                        const sparseGeometry = new THREE.BufferGeometry();
+                        sparseGeometry.setAttribute('position', new THREE.Float32BufferAttribute(positionsList, 3));
+                        sparseGeometry.setAttribute('color', new THREE.Float32BufferAttribute(colorsList, 3));
+                        sparseGeometry.setAttribute('phase', new THREE.Float32BufferAttribute(phasesList, 1));
+
+                        const material = new THREE.PointsMaterial({
+                            size: 0.12, 
+                            map: circleSprite, 
+                            vertexColors: true,
+                            transparent: true,
+                            opacity: 1.0, 
+                            depthWrite: false, 
+                            blending: THREE.AdditiveBlending, 
+                        });
+
+                        // --- SHADER FIX ---
+                        material.onBeforeCompile = (shader) => {
+                            shader.uniforms.uTime = uniforms.uTime;
+
+                            // 1. Declare Phase (Common)
+                            shader.vertexShader = shader.vertexShader.replace(
+                                '#include <common>',
+                                `#include <common>
+                                attribute float phase;
+                                varying float vPhase;`
+                            );
+
+                            // 2. Assign Phase (Begin Vertex) - SAFE PLACE
+                            shader.vertexShader = shader.vertexShader.replace(
+                                '#include <begin_vertex>',
+                                `#include <begin_vertex>
+                                vPhase = phase;`
+                            );
+                            
+                            // 3. Size Attenuation (Fog Vertex) - SAFE PLACE for mvPosition
+                            // Accessing mvPosition here prevents the "undeclared identifier" error
+                            shader.vertexShader = shader.vertexShader.replace(
+                                '#include <fog_vertex>',
+                                `#include <fog_vertex>
+                                float dist = length(mvPosition.xyz); 
+                                float sizeBoost = smoothstep(20.0, 0.0, dist) * 1.5 + 1.0; 
+                                gl_PointSize *= sizeBoost;`
+                            );
+
+                            // 4. Glimmer Effect (Fragment)
+                            shader.fragmentShader = shader.fragmentShader.replace(
+                                '#include <common>',
+                                `#include <common>
+                                uniform float uTime;
+                                varying float vPhase;`
+                            );
+                            shader.fragmentShader = shader.fragmentShader.replace(
+                                '#include <map_particle_fragment>',
+                                `#include <map_particle_fragment>
+                                float glimmer = sin(uTime * 1.5 + vPhase) * 0.5 + 0.5;
+                                glimmer = mix(0.2, 1.0, glimmer);
+                                diffuseColor.a *= glimmer;`
+                            );
+                        };
+
+                        const points = new THREE.Points(sparseGeometry, material);
+                        points.scale.set(1.2, 1.2, 1.2); 
+                        points.position.set(0, -1, 0); 
+                        particlesGeometry.add(points);
                     }
+                });
 
-                    const sparseGeometry = new THREE.BufferGeometry();
-                    sparseGeometry.setAttribute('position', new THREE.Float32BufferAttribute(positionsList, 3));
-                    sparseGeometry.setAttribute('color', new THREE.Float32BufferAttribute(colorsList, 3));
-                    sparseGeometry.setAttribute('phase', new THREE.Float32BufferAttribute(phasesList, 1));
-
-                    const material = new THREE.PointsMaterial({
-                        size: 0.12, 
-                        map: circleSprite, 
-                        vertexColors: true,
-                        transparent: true,
-                        opacity: 1.0, 
-                        depthWrite: false, 
-                        blending: THREE.AdditiveBlending, 
-                    });
-
-                    material.onBeforeCompile = (shader) => {
-                        shader.uniforms.uTime = uniforms.uTime;
-                        // 1. Setup Phase
-                        shader.vertexShader = shader.vertexShader.replace('#include <common>',`#include <common> \n attribute float phase; varying float vPhase;`);
-                        shader.vertexShader = shader.vertexShader.replace('#include <begin_vertex>',`#include <begin_vertex> \n vPhase = phase;`);
-                        
-                        // 2. Setup Size Attenuation (Late)
-                        shader.vertexShader = shader.vertexShader.replace('#include <fog_vertex>',`#include <fog_vertex> \n float dist = length(mvPosition.xyz); float sizeBoost = smoothstep(20.0, 0.0, dist) * 1.5 + 1.0; gl_PointSize *= sizeBoost;`);
-
-                        // 3. Setup Fragment Glimmer
-                        shader.fragmentShader = shader.fragmentShader.replace('#include <common>',`#include <common> \n uniform float uTime; varying float vPhase;`);
-                        shader.fragmentShader = shader.fragmentShader.replace('#include <map_particle_fragment>',`#include <map_particle_fragment> \n float glimmer = sin(uTime * 1.5 + vPhase) * 0.5 + 0.5; glimmer = mix(0.2, 1.0, glimmer); diffuseColor.a *= glimmer;`);
-                    };
-
-                    const points = new THREE.Points(sparseGeometry, material);
-                    points.scale.set(1.2, 1.2, 1.2); 
-                    points.position.set(0, -1, 0); 
-                    particlesGeometry.add(points);
-                }
-            });
-
-            brainParticles = particlesGeometry;
-            scene.add(brainParticles);
-        });
+                brainParticles = particlesGeometry;
+                scene.add(brainParticles);
+            },
+            undefined,
+            (error) => {
+                console.error("❌ Error loading model:", error);
+            }
+        );
 
         // Animation Loop
         function animate() {
@@ -343,7 +383,7 @@
             controls.update(); 
 
             if (brainParticles) {
-                brainParticles.rotation.y += 0.0005; // Slow rotation
+                brainParticles.rotation.y += 0.0005; 
             }
             renderer.render(scene, camera);
         }
