@@ -130,13 +130,64 @@
                             blending: THREE.AdditiveBlending, 
                         });
 
+                        // Corrected Shader Injection
                         material.onBeforeCompile = (shader) => {
-                            shader.uniforms.uTime = uniforms.uTime;
-                            shader.vertexShader = shader.vertexShader.replace('#include <common>',`#include <common> \n attribute float phase; varying float vPhase;`);
-                            shader.vertexShader = shader.vertexShader.replace('#include <begin_vertex>',`#include <begin_vertex> \n vPhase = phase; float dist = length(mvPosition.xyz); float sizeBoost = smoothstep(20.0, 0.0, dist) * 1.5 + 1.0; gl_PointSize *= sizeBoost;`);
-                            shader.fragmentShader = shader.fragmentShader.replace('#include <common>',`#include <common> \n uniform float uTime; varying float vPhase;`);
-                            shader.fragmentShader = shader.fragmentShader.replace('#include <map_particle_fragment>',`#include <map_particle_fragment> \n float glimmer = sin(uTime * 1.5 + vPhase) * 0.5 + 0.5; glimmer = mix(0.2, 1.0, glimmer); diffuseColor.a *= glimmer;`);
-                        };
+                        shader.uniforms.uTime = uniforms.uTime;
+
+                        // --- Vertex Shader ---
+                        
+                        // 1. Declare custom attribute and varying
+                        shader.vertexShader = shader.vertexShader.replace(
+                            '#include <common>',
+                            `
+                            #include <common>
+                            attribute float phase;
+                            varying float vPhase;
+                            `
+                        );
+
+                        // 2. Assign varying (runs early)
+                        shader.vertexShader = shader.vertexShader.replace(
+                            '#include <begin_vertex>',
+                            `
+                            #include <begin_vertex>
+                            vPhase = phase;
+                            `
+                        );
+
+                        // 3. Calculate Size Boost (runs LATE, after mvPosition is calculated)
+                        shader.vertexShader = shader.vertexShader.replace(
+                            '#include <fog_vertex>',
+                            `
+                            #include <fog_vertex>
+                            // mvPosition is calculated in <project_vertex>, so it is available here
+                            float dist = length(mvPosition.xyz); 
+                            float sizeBoost = smoothstep(20.0, 0.0, dist) * 1.5 + 1.0;
+                            gl_PointSize *= sizeBoost;
+                            `
+                        );
+
+                        // --- Fragment Shader ---
+                        
+                        shader.fragmentShader = shader.fragmentShader.replace(
+                            '#include <common>',
+                            `
+                            #include <common>
+                            uniform float uTime;
+                            varying float vPhase;
+                            `
+                        );
+
+                        shader.fragmentShader = shader.fragmentShader.replace(
+                            '#include <map_particle_fragment>',
+                            `
+                            #include <map_particle_fragment>
+                            float glimmer = sin(uTime * 1.5 + vPhase) * 0.5 + 0.5;
+                            glimmer = mix(0.2, 1.0, glimmer);
+                            diffuseColor.a *= glimmer;
+                            `
+                        );
+                    };
 
                         const points = new THREE.Points(sparseGeometry, material);
                         points.scale.set(1.2, 1.2, 1.2); 
