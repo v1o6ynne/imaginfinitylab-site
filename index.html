@@ -1,25 +1,59 @@
-<script type="module">
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Imagin∞ Lab - Debug Mode</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+        "three/examples/jsm/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+      }
+    }
+  </script>
+
+  <style>
+    :root { --bg-color: #000000; --text-main: #e5e7eb; }
+    body { margin: 0; background-color: var(--bg-color); color: var(--text-main); font-family: 'Manrope', sans-serif; overflow: hidden; }
+    #vis-container { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: -1; }
+    
+    /* Simple styling for the overlay text so you can see it */
+    .overlay { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: white; text-align: center; pointer-events: none; }
+    h1 { font-size: 3rem; margin-bottom: 0.5rem; }
+  </style>
+</head>
+
+<body>
+  <div id="vis-container"></div>
+  
+  <div class="overlay">
+    <h1>Imagin∞ Lab</h1>
+    <p>Debug Mode: Check Console (F12) if model missing</p>
+  </div>
+
+  <script type="module">
         import * as THREE from 'three';
         import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
         import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 
         console.log("🚀 Three.js starting...");
 
-        // --- Configuration ---
-        // TRY THIS PATH FIRST. If it fails, try '/whole_brain_source.glb' (with leading slash)
-        const MODEL_PATH = './whole_brain_optimized.glb'; 
+        const MODEL_PATH = './whole_brain_source.glb'; 
         const SAMPLING_RATE = 8;
 
-        // --- Scene Setup ---
         const container = document.getElementById('vis-container');
-        if (!container) console.error("❌ container not found!");
-
         const scene = new THREE.Scene();
         scene.fog = new THREE.FogExp2(0x000000, 0.03); 
         const clock = new THREE.Clock();
 
         const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-        camera.position.set(0, 0, 20); // Move camera back to ensure we see 0,0,0
+        camera.position.set(0, 0, 20);
 
         const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
         renderer.setClearColor(0x000000, 1);
@@ -27,18 +61,14 @@
         renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); 
         container.appendChild(renderer.domElement);
 
-        // --- Debug Helpers ---
-        // 1. Add Axes Helper (Red=X, Green=Y, Blue=Z)
+        // Debug Axes: Red=X, Green=Y, Blue=Z
         const axesHelper = new THREE.AxesHelper( 5 );
         scene.add( axesHelper );
-        console.log("✅ Scene & Renderer initialized");
 
-        // --- Controls ---
         const controls = new OrbitControls(camera, renderer.domElement);
         controls.enableDamping = true;
-        controls.target.set(0, 0, 0);
 
-        // --- Texture ---
+        // Texture
         function createCircleTexture() {
             const size = 64;
             const canvas = document.createElement('canvas');
@@ -53,30 +83,23 @@
             return new THREE.CanvasTexture(canvas);
         }
         const circleSprite = createCircleTexture();
-
-        // --- Shader Uniforms ---
         const uniforms = { uTime: { value: 0 } };
 
-        // --- Model Loading ---
+        // Loader
         const loader = new GLTFLoader();
         let brainParticles = null;
 
-        console.log(`📂 Attempting to load model from: ${MODEL_PATH}`);
-
         loader.load(MODEL_PATH, 
-            // Success
             (gltf) => {
-                console.log("🎉 Model Loaded Successfully!", gltf);
+                console.log("🎉 Model Loaded", gltf);
                 const originalScene = gltf.scene;
                 const particlesGeometry = new THREE.Group();
-                let pointCount = 0;
 
                 originalScene.traverse((child) => {
                     if (child.isMesh) {
                         const originalGeo = child.geometry;
                         const originalPositions = originalGeo.attributes.position.array;
                         const totalCount = originalPositions.length / 3;
-                        
                         const positionsList = [];
                         const colorsList = [];
                         const phasesList = []; 
@@ -86,12 +109,10 @@
                             const x = originalPositions[i * 3];
                             const y = originalPositions[i * 3 + 1];
                             const z = originalPositions[i * 3 + 2];
-
                             positionsList.push(x, y, z);
                             phasesList.push(Math.random() * Math.PI * 2);
                             colorObj.setHSL(0.6, 0.8, 0.3); 
                             colorsList.push(colorObj.r, colorObj.g, colorObj.b);
-                            pointCount++;
                         }
 
                         const sparseGeometry = new THREE.BufferGeometry();
@@ -123,41 +144,25 @@
                         particlesGeometry.add(points);
                     }
                 });
-
-                console.log(`✨ Particles generated: ${pointCount}`);
-                if (pointCount === 0) console.warn("⚠️ Model loaded but found no mesh data to generate particles.");
-
                 brainParticles = particlesGeometry;
                 scene.add(brainParticles);
             }, 
-            // Progress
-            (xhr) => {
-                console.log(`⏳ Loading: ${(xhr.loaded / xhr.total * 100)}% loaded`);
-            },
-            // Error
+            (xhr) => { console.log(`Loading: ${(xhr.loaded / xhr.total * 100)}%`); },
             (error) => {
-                console.error('❌ An error happened loading the model:', error);
-                
-                // Fallback: Add a red box if model fails so we know scene is working
-                const geometry = new THREE.BoxGeometry( 5, 5, 5 );
-                const material = new THREE.MeshBasicMaterial( {color: 0xff0000, wireframe: true} );
-                const cube = new THREE.Mesh( geometry, material );
-                scene.add( cube );
-                console.log("📦 Added Fallback Red Cube");
+                console.error('❌ Error loading model:', error);
+                // Fallback Cube
+                const geometry = new THREE.BoxGeometry(5,5,5);
+                const material = new THREE.MeshBasicMaterial({color: 0xff0000, wireframe: true});
+                scene.add(new THREE.Mesh(geometry, material));
             }
         );
 
-        // --- Animate ---
         function animate() {
             requestAnimationFrame(animate);
             const time = clock.getElapsedTime();
             uniforms.uTime.value = time;
             controls.update(); 
-
-            if (brainParticles) {
-                brainParticles.rotation.y += 0.0005;
-            }
-
+            if (brainParticles) brainParticles.rotation.y += 0.0005;
             renderer.render(scene, camera);
         }
         animate();
@@ -168,3 +173,5 @@
             camera.updateProjectionMatrix();
         });
   </script>
+</body>
+</html>
