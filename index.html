@@ -2,12 +2,12 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Imagin∞ Lab - Debug Mode</title>
+  <title>Imagin∞ Lab</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  
+
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Manrope:wght@300;400;500&family=Noto+Sans+SC:wght@300;400;700&display=swap" rel="stylesheet">
 
   <script type="importmap">
     {
@@ -19,210 +19,527 @@
   </script>
 
   <style>
-    :root { --bg-color: #000000; --text-main: #e5e7eb; }
-    body { margin: 0; background-color: var(--bg-color); color: var(--text-main); font-family: 'Manrope', sans-serif; overflow: hidden; }
-    #vis-container { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: -1; }
-    
-    /* Simple styling for the overlay text so you can see it */
-    .overlay { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: white; text-align: center; pointer-events: none; }
-    h1 { font-size: 3rem; margin-bottom: 0.5rem; }
+    :root {
+      --blue-glow: #00c8ff;
+      --blue-mid:  #0088cc;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background-color: #000;
+      overflow: hidden;
+    }
+
+    /* ── Three.js canvas ── */
+    #vis-container {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+    }
+
+    /* ── Subtle scanlines for sci-fi texture ── */
+    .scanlines {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 5;
+      background: repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 3px,
+        rgba(0, 0, 0, 0.06) 3px,
+        rgba(0, 0, 0, 0.06) 4px
+      );
+    }
+
+    /* ── Corner HUD brackets ── */
+    .corner {
+      position: fixed;
+      width: 52px;
+      height: 52px;
+      pointer-events: none;
+      z-index: 20;
+      opacity: 0.45;
+    }
+    .corner-tl { top: 22px; left: 22px;  border-top: 1px solid var(--blue-glow); border-left:  1px solid var(--blue-glow); }
+    .corner-tr { top: 22px; right: 22px; border-top: 1px solid var(--blue-glow); border-right: 1px solid var(--blue-glow); }
+    .corner-bl { bottom: 22px; left: 22px;  border-bottom: 1px solid var(--blue-glow); border-left:  1px solid var(--blue-glow); }
+    .corner-br { bottom: 22px; right: 22px; border-bottom: 1px solid var(--blue-glow); border-right: 1px solid var(--blue-glow); }
+
+    /* ── Centred overlay ── */
+    .overlay {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      pointer-events: none;
+      z-index: 10;
+    }
+
+    /* Thin horizontal rule above & below title */
+    .rule {
+      width: clamp(180px, 34vw, 520px);
+      height: 1px;
+      background: linear-gradient(90deg,
+        transparent 0%,
+        rgba(0, 200, 255, 0.6) 30%,
+        rgba(0, 200, 255, 0.6) 70%,
+        transparent 100%
+      );
+      margin: 18px 0;
+    }
+
+    .lab-title {
+      font-family: 'Orbitron', monospace;
+      font-size: clamp(2.2rem, 5.5vw, 4.8rem);
+      font-weight: 700;
+      letter-spacing: 0.14em;
+      color: #ffffff;
+      margin: 0;
+      text-shadow:
+        0 0 18px rgba(0, 210, 255, 0.95),
+        0 0 40px rgba(0, 180, 255, 0.65),
+        0 0 80px rgba(0, 140, 255, 0.40),
+        0 0 130px rgba(0, 100, 255, 0.20);
+      animation: title-pulse 5s ease-in-out infinite;
+    }
+
+    @keyframes title-pulse {
+      0%, 100% {
+        text-shadow:
+          0 0 18px rgba(0, 210, 255, 0.95),
+          0 0 40px rgba(0, 180, 255, 0.65),
+          0 0 80px rgba(0, 140, 255, 0.40);
+      }
+      50% {
+        text-shadow:
+          0 0 26px rgba(0, 230, 255, 1.0),
+          0 0 55px rgba(0, 200, 255, 0.80),
+          0 0 110px rgba(0, 160, 255, 0.55),
+          0 0 150px rgba(0, 110, 255, 0.25);
+      }
+    }
+
+    .lab-subtitle {
+      font-family: 'Manrope', sans-serif;
+      font-size: clamp(0.62rem, 1.3vw, 0.88rem);
+      font-weight: 300;
+      letter-spacing: 0.45em;
+      color: rgba(0, 200, 255, 0.60);
+      margin: 0;
+      text-transform: uppercase;
+      height: 1.6em;           /* reserve fixed height so layout doesn't jump */
+      display: flex;
+      align-items: center;
+      transition: opacity 0.25s ease;
+    }
+
+    /* Blinking cursor */
+    .typewriter-cursor {
+      display: inline-block;
+      width: 2px;
+      height: 0.85em;
+      background: rgba(0, 210, 255, 0.85);
+      margin-left: 5px;
+      vertical-align: middle;
+      animation: tw-blink 1s step-end infinite;
+    }
+    @keyframes tw-blink {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: 0; }
+    }
+
+    /* Chinese variant overrides */
+    html[lang="zh"] .lab-title {
+      font-family: 'Noto Sans SC', sans-serif;
+      font-weight: 700;
+      letter-spacing: 0.22em;
+      font-size: clamp(2.0rem, 5.0vw, 4.4rem);
+    }
+    html[lang="zh"] .lab-subtitle {
+      letter-spacing: 0.25em;
+      font-family: 'Noto Sans SC', sans-serif;
+      font-weight: 300;
+      text-transform: none;
+    }
+
+    /* Fade helper */
+    .title-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0;
+    }
+    .title-wrap.fading .lab-title,
+    .title-wrap.fading .lab-subtitle {
+      opacity: 0;
+    }
+    .lab-title { transition: opacity 0.25s ease; }
+
+    /* ── Language toggle button ── */
+    #lang-btn {
+      position: fixed;
+      top: 26px;
+      right: 90px;           /* sits just inside the top-right corner bracket */
+      z-index: 30;
+      background: transparent;
+      border: 1px solid rgba(0, 200, 255, 0.35);
+      color: rgba(0, 200, 255, 0.70);
+      font-family: 'Manrope', monospace;
+      font-size: 0.72rem;
+      font-weight: 500;
+      letter-spacing: 0.18em;
+      padding: 5px 13px;
+      cursor: pointer;
+      border-radius: 3px;
+      transition: border-color 0.2s, color 0.2s, box-shadow 0.2s;
+      text-transform: uppercase;
+    }
+    #lang-btn:hover {
+      border-color: rgba(0, 220, 255, 0.80);
+      color: rgba(0, 220, 255, 1.0);
+      box-shadow: 0 0 10px rgba(0, 200, 255, 0.25);
+    }
+
+    /* ── PI credit line ── */
+    #pi-credit {
+      position: fixed;
+      bottom: 30px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 20;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      pointer-events: none;
+      white-space: nowrap;
+    }
+    .pi-label {
+      font-family: 'Manrope', sans-serif;
+      font-size: 0.68rem;
+      font-weight: 400;
+      letter-spacing: 0.20em;
+      text-transform: uppercase;
+      color: rgba(0, 180, 255, 0.38);
+    }
+    .pi-sep {
+      color: rgba(0, 180, 255, 0.25);
+      font-size: 0.7rem;
+    }
+    .pi-name {
+      font-family: 'Manrope', sans-serif;
+      font-size: 0.68rem;
+      font-weight: 500;
+      letter-spacing: 0.18em;
+      color: rgba(0, 200, 255, 0.55);
+    }
   </style>
 </head>
 
 <body>
+
   <div id="vis-container"></div>
-  
-  <div class="overlay">
-    <h1>Imagin∞ Lab</h1>
-    <p>Debug Mode: Check Console (F12) if model missing</p>
+  <div class="scanlines"></div>
+
+  <div class="corner corner-tl"></div>
+  <div class="corner corner-tr"></div>
+  <div class="corner corner-bl"></div>
+  <div class="corner corner-br"></div>
+
+  <button id="lang-btn">EN</button>
+
+  <div id="pi-credit">
+    <span class="pi-label">Principal Investigator</span>
+    <span class="pi-sep">·</span>
+    <span class="pi-name">Ruolin Wang</span>
   </div>
 
-  <script type="module">
-        import * as THREE from 'three';
-        import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
-        import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+  <div class="overlay">
+    <div class="rule"></div>
+    <div class="title-wrap">
+      <h1 class="lab-title" id="main-title">Imagin∞ Lab</h1>
+      <p class="lab-subtitle" id="main-subtitle"><span id="tw-text"></span><span class="typewriter-cursor"></span></p>
+    </div>
+    <div class="rule"></div>
+  </div>
 
-        console.log("🚀 Three.js starting...");
+  <script>
+    (function () {
+      const btn     = document.getElementById('lang-btn');
+      const titleEl = document.getElementById('main-title');
+      const twText  = document.getElementById('tw-text');
+      const wrap    = document.querySelector('.title-wrap');
+      const piLabel = document.querySelector('.pi-label');
 
-        const MODEL_PATH = './whole_brain_source.glb'; 
-        const SAMPLING_RATE = 8;
+      const TITLES = {
+        en: 'Imagin\u221e Lab',
+        zh: '思域无限实验室',
+      };
+      const SUBTITLES = {
+        en: [
+          'Human-Inspired AI \u00b7 Human-Centered AI',
+          'AI for Social Good \u00b7 AI for Science Good',
+        ],
+        zh: [
+          'Human-Inspired AI \u00b7 Human-Centered AI',
+          'AI for Social Good \u00b7 AI for Science Good',
+        ],
+      };
 
-        const container = document.getElementById('vis-container');
-        const scene = new THREE.Scene();
-        scene.fog = new THREE.FogExp2(0x000000, 0.03); 
-        const clock = new THREE.Clock();
+      let lang       = 'en';
+      let phraseIdx  = 0;
+      let charIdx    = 0;
+      let isDeleting = false;
+      let twTimer    = null;
 
-        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-        camera.position.set(0, 0, 20);
+      function typewrite() {
+        const phrases = SUBTITLES[lang];
+        const phrase  = phrases[phraseIdx];
+        let delay;
 
-        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
-        renderer.setClearColor(0x000000, 1);
-        renderer.setSize(window.innerWidth, window.innerHeight);
-        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); 
-        container.appendChild(renderer.domElement);
-
-        // Debug Axes: Red=X, Green=Y, Blue=Z
-        const axesHelper = new THREE.AxesHelper( 5 );
-        scene.add( axesHelper );
-
-        const controls = new OrbitControls(camera, renderer.domElement);
-        controls.enableDamping = true;
-
-        // Texture
-        function createCircleTexture() {
-            const size = 64;
-            const canvas = document.createElement('canvas');
-            canvas.width = size;
-            canvas.height = size;
-            const context = canvas.getContext('2d');
-            const center = size / 2;
-            context.beginPath();
-            context.arc(center, center, size/2, 0, 2 * Math.PI);
-            context.fillStyle = '#ffffff'; 
-            context.fill();
-            return new THREE.CanvasTexture(canvas);
+        if (isDeleting) {
+          charIdx--;
+          twText.textContent = phrase.substring(0, charIdx);
+          delay = charIdx === 0 ? 600 : 55;
+        } else {
+          charIdx++;
+          twText.textContent = phrase.substring(0, charIdx);
+          delay = charIdx === phrase.length ? 3200 : 120;
         }
-        const circleSprite = createCircleTexture();
-        const uniforms = { uTime: { value: 0 } };
 
-        // Loader
-        const loader = new GLTFLoader();
-        let brainParticles = null;
-
-        loader.load(MODEL_PATH, 
-            (gltf) => {
-                console.log("🎉 Model Loaded", gltf);
-                const originalScene = gltf.scene;
-                const particlesGeometry = new THREE.Group();
-
-                originalScene.traverse((child) => {
-                    if (child.isMesh) {
-                        const originalGeo = child.geometry;
-                        const originalPositions = originalGeo.attributes.position.array;
-                        const totalCount = originalPositions.length / 3;
-                        const positionsList = [];
-                        const colorsList = [];
-                        const phasesList = []; 
-                        const colorObj = new THREE.Color();
-
-                        for (let i = 0; i < totalCount; i += SAMPLING_RATE) {
-                            const x = originalPositions[i * 3];
-                            const y = originalPositions[i * 3 + 1];
-                            const z = originalPositions[i * 3 + 2];
-                            positionsList.push(x, y, z);
-                            phasesList.push(Math.random() * Math.PI * 2);
-                            colorObj.setHSL(0.6, 0.8, 0.3); 
-                            colorsList.push(colorObj.r, colorObj.g, colorObj.b);
-                        }
-
-                        const sparseGeometry = new THREE.BufferGeometry();
-                        sparseGeometry.setAttribute('position', new THREE.Float32BufferAttribute(positionsList, 3));
-                        sparseGeometry.setAttribute('color', new THREE.Float32BufferAttribute(colorsList, 3));
-                        sparseGeometry.setAttribute('phase', new THREE.Float32BufferAttribute(phasesList, 1));
-
-                        const material = new THREE.PointsMaterial({
-                            size: 0.12, 
-                            map: circleSprite, 
-                            vertexColors: true,
-                            transparent: true,
-                            opacity: 1.0, 
-                            depthWrite: false, 
-                            blending: THREE.AdditiveBlending, 
-                        });
-
-                        // Corrected Shader Injection
-                        material.onBeforeCompile = (shader) => {
-                        shader.uniforms.uTime = uniforms.uTime;
-
-                        // --- Vertex Shader ---
-                        
-                        // 1. Declare custom attribute and varying
-                        shader.vertexShader = shader.vertexShader.replace(
-                            '#include <common>',
-                            `
-                            #include <common>
-                            attribute float phase;
-                            varying float vPhase;
-                            `
-                        );
-
-                        // 2. Assign varying (runs early)
-                        shader.vertexShader = shader.vertexShader.replace(
-                            '#include <begin_vertex>',
-                            `
-                            #include <begin_vertex>
-                            vPhase = phase;
-                            `
-                        );
-
-                        // 3. Calculate Size Boost (runs LATE, after mvPosition is calculated)
-                        shader.vertexShader = shader.vertexShader.replace(
-                            '#include <fog_vertex>',
-                            `
-                            #include <fog_vertex>
-                            // mvPosition is calculated in <project_vertex>, so it is available here
-                            float dist = length(mvPosition.xyz); 
-                            float sizeBoost = smoothstep(20.0, 0.0, dist) * 1.5 + 1.0;
-                            gl_PointSize *= sizeBoost;
-                            `
-                        );
-
-                        // --- Fragment Shader ---
-                        
-                        shader.fragmentShader = shader.fragmentShader.replace(
-                            '#include <common>',
-                            `
-                            #include <common>
-                            uniform float uTime;
-                            varying float vPhase;
-                            `
-                        );
-
-                        shader.fragmentShader = shader.fragmentShader.replace(
-                            '#include <map_particle_fragment>',
-                            `
-                            #include <map_particle_fragment>
-                            float glimmer = sin(uTime * 1.5 + vPhase) * 0.5 + 0.5;
-                            glimmer = mix(0.2, 1.0, glimmer);
-                            diffuseColor.a *= glimmer;
-                            `
-                        );
-                    };
-
-                        const points = new THREE.Points(sparseGeometry, material);
-                        points.scale.set(1.2, 1.2, 1.2); 
-                        points.position.set(0, -1, 0); 
-                        particlesGeometry.add(points);
-                    }
-                });
-                brainParticles = particlesGeometry;
-                scene.add(brainParticles);
-            }, 
-            (xhr) => { console.log(`Loading: ${(xhr.loaded / xhr.total * 100)}%`); },
-            (error) => {
-                console.error('❌ Error loading model:', error);
-                // Fallback Cube
-                const geometry = new THREE.BoxGeometry(5,5,5);
-                const material = new THREE.MeshBasicMaterial({color: 0xff0000, wireframe: true});
-                scene.add(new THREE.Mesh(geometry, material));
-            }
-        );
-
-        function animate() {
-            requestAnimationFrame(animate);
-            const time = clock.getElapsedTime();
-            uniforms.uTime.value = time;
-            controls.update(); 
-            if (brainParticles) brainParticles.rotation.y += 0.0005;
-            renderer.render(scene, camera);
+        if (!isDeleting && charIdx === phrase.length) {
+          isDeleting = true;
+        } else if (isDeleting && charIdx === 0) {
+          isDeleting = false;
+          phraseIdx  = (phraseIdx + 1) % phrases.length;
         }
-        animate();
 
-        window.addEventListener('resize', () => {
-            renderer.setSize(window.innerWidth, window.innerHeight);
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-        });
+        twTimer = setTimeout(typewrite, delay);
+      }
+
+      function startTypewriter() {
+        clearTimeout(twTimer);
+        phraseIdx  = 0;
+        charIdx    = 0;
+        isDeleting = false;
+        twText.textContent = '';
+        twTimer = setTimeout(typewrite, 600);
+      }
+
+      btn.addEventListener('click', () => {
+        lang = lang === 'en' ? 'zh' : 'en';
+
+        wrap.classList.add('fading');
+        clearTimeout(twTimer);
+
+        setTimeout(() => {
+          document.documentElement.lang = lang;
+          titleEl.textContent = TITLES[lang];
+          btn.textContent     = lang === 'en' ? 'EN' : '中文';
+          wrap.classList.remove('fading');
+          startTypewriter();
+        }, 270);
+      });
+
+      startTypewriter();
+    })();
   </script>
+
+  <script type="module">
+    import * as THREE from 'three';
+    import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+
+    const MODEL_PATH   = './whole_brain_source.glb';
+    const SAMPLING_RATE   = 6;
+    const WAVE_SPEED      = 0.75;
+    const WAVE_AMPLITUDE  = 0.055;
+
+    // ── Scene ────────────────────────────────────────────────────────────────
+    const container = document.getElementById('vis-container');
+    const scene     = new THREE.Scene();
+    scene.fog = new THREE.FogExp2(0x000000, 0.022);
+
+    const clock  = new THREE.Clock();
+    const camera = new THREE.PerspectiveCamera(72, innerWidth / innerHeight, 0.1, 1000);
+    camera.position.set(0, 0, 21);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setClearColor(0x000000, 1);
+    renderer.setSize(innerWidth, innerHeight);
+    renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+    container.appendChild(renderer.domElement);
+
+    // ── Glow sprite texture ──────────────────────────────────────────────────
+    function createGlowTexture() {
+      const sz  = 128;
+      const cnv = document.createElement('canvas');
+      cnv.width = cnv.height = sz;
+      const ctx = cnv.getContext('2d');
+      const c   = sz / 2;
+      const g   = ctx.createRadialGradient(c, c, 0, c, c, c);
+      g.addColorStop(0.00, 'rgba(255,255,255,1.0)');
+      g.addColorStop(0.18, 'rgba(210,240,255,0.90)');
+      g.addColorStop(0.45, 'rgba(80, 190,255,0.40)');
+      g.addColorStop(1.00, 'rgba(0,  100,255,0.0)');
+      ctx.fillStyle = g;
+      ctx.fillRect(0, 0, sz, sz);
+      return new THREE.CanvasTexture(cnv);
+    }
+    const glowSprite = createGlowTexture();
+
+    // Shared uniform for glimmer animation
+    const uniforms = { uTime: { value: 0.0 } };
+
+    // ── Load brain model ─────────────────────────────────────────────────────
+    let brainGroup = null;
+
+    new GLTFLoader().load(MODEL_PATH, (gltf) => {
+
+      const group = new THREE.Group();
+
+      gltf.scene.traverse((child) => {
+        if (!child.isMesh) return;
+        const geo = child.geometry;
+        if (geo.attributes.position.count < 500) return;
+
+        geo.computeBoundingBox();
+        const minZ   = geo.boundingBox.min.z;
+        const rangeZ = geo.boundingBox.max.z - minZ;
+
+        const pos    = geo.attributes.position.array;
+        const total  = pos.length / 3;
+
+        const positions = [];
+        const colors    = [];
+        const phases    = [];
+        const col       = new THREE.Color();
+
+        for (let i = 0; i < total; i += SAMPLING_RATE) {
+          const x = pos[i * 3],  y = pos[i * 3 + 1],  z = pos[i * 3 + 2];
+          positions.push(x, y, z);
+
+          const ph = Math.random() * Math.PI * 2;
+          phases.push(ph);
+
+          // Blue–cyan palette with slight depth variation
+          const nz  = (z - minZ) / rangeZ;                     // 0 → 1
+          const hue = 0.575 + nz * 0.07 + Math.sin(ph) * 0.03; // cyan → blue
+          const sat = 0.75  + Math.sin(ph * 2) * 0.12;
+          const lit = 0.42  + nz * 0.16 + Math.cos(ph) * 0.04;
+          col.setHSL(
+            Math.max(0.50, Math.min(0.70, hue)),
+            Math.max(0.60, Math.min(1.00, sat)),
+            Math.max(0.32, Math.min(0.62, lit))
+          );
+          colors.push(col.r, col.g, col.b);
+        }
+
+        const bufGeo = new THREE.BufferGeometry();
+        bufGeo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+        bufGeo.setAttribute('color',    new THREE.Float32BufferAttribute(colors,    3));
+        bufGeo.setAttribute('phase',    new THREE.Float32BufferAttribute(phases,    1));
+        bufGeo.userData.originalPositions = new Float32Array(positions);
+
+        const mat = new THREE.PointsMaterial({
+          size:         0.12,
+          map:          glowSprite,
+          vertexColors: true,
+          transparent:  true,
+          opacity:      1.0,
+          depthWrite:   false,
+          blending:     THREE.AdditiveBlending,
+        });
+
+        // Custom glimmer + size-boost shader
+        mat.onBeforeCompile = (shader) => {
+          shader.uniforms.uTime = uniforms.uTime;
+
+          shader.vertexShader = shader.vertexShader.replace(
+            '#include <common>',
+            `#include <common>
+             attribute float phase;
+             varying  float vPhase;`
+          );
+          shader.vertexShader = shader.vertexShader.replace(
+            '#include <begin_vertex>',
+            `#include <begin_vertex>
+             vPhase = phase;`
+          );
+          shader.vertexShader = shader.vertexShader.replace(
+            '#include <fog_vertex>',
+            `#include <fog_vertex>
+             float _dist = length(mvPosition.xyz);
+             gl_PointSize *= (1.0 + smoothstep(22.0, 0.0, _dist) * 1.3);`
+          );
+
+          shader.fragmentShader = shader.fragmentShader.replace(
+            '#include <common>',
+            `#include <common>
+             uniform float uTime;
+             varying float vPhase;`
+          );
+          shader.fragmentShader = shader.fragmentShader.replace(
+            '#include <map_particle_fragment>',
+            `#include <map_particle_fragment>
+             float glimmer = sin(uTime * 1.3 + vPhase) * 0.5 + 0.5;
+             glimmer = mix(0.12, 1.0, glimmer);
+             diffuseColor.a *= glimmer;`
+          );
+        };
+
+        const pts = new THREE.Points(bufGeo, mat);
+        pts.scale.set(1.2, 1.2, 1.2);
+        pts.position.set(0, -1, 0);
+        group.add(pts);
+      });
+
+      brainGroup = group;
+      scene.add(brainGroup);
+
+    }, undefined, (err) => console.error('Brain model load error:', err));
+
+    // ── Render loop ──────────────────────────────────────────────────────────
+    function animate() {
+      requestAnimationFrame(animate);
+      const t = clock.getElapsedTime();
+      uniforms.uTime.value = t;
+
+      if (brainGroup) {
+        // Slow auto-rotation
+        brainGroup.rotation.y += 0.0007;
+
+        // Per-vertex wave ripple
+        brainGroup.children.forEach((pts) => {
+          const geo   = pts.geometry;
+          const arr   = geo.attributes.position.array;
+          const orig  = geo.userData.originalPositions;
+          const ph    = geo.attributes.phase.array;
+
+          for (let i = 0; i < arr.length; i += 3) {
+            const wave = Math.sin(t * WAVE_SPEED + orig[i + 1] * 0.45 + ph[i / 3]) * WAVE_AMPLITUDE;
+            arr[i]     = orig[i]     + wave;
+            arr[i + 1] = orig[i + 1] + wave;
+            arr[i + 2] = orig[i + 2] + wave;
+          }
+          geo.attributes.position.needsUpdate = true;
+        });
+      }
+
+      renderer.render(scene, camera);
+    }
+    animate();
+
+    // ── Resize ────────────────────────────────────────────────────────────────
+    window.addEventListener('resize', () => {
+      renderer.setSize(innerWidth, innerHeight);
+      camera.aspect = innerWidth / innerHeight;
+      camera.updateProjectionMatrix();
+    });
+  </script>
+
 </body>
 </html>
